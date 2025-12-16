@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/public_news_provider.dart';
-import '../widgets/news_card.dart';
+import '../widgets/portal_widgets.dart';
 
 class CategoryNewsScreen extends StatefulWidget {
-  final String categoryId; // Actually passing Name for now based on router, need to handle both
+  final String categoryId;
   const CategoryNewsScreen({super.key, required this.categoryId});
 
   @override
@@ -12,23 +13,32 @@ class CategoryNewsScreen extends StatefulWidget {
 }
 
 class _CategoryNewsScreenState extends State<CategoryNewsScreen> {
-  List<dynamic> _news = [];
-  bool _loading = true;
+  List<dynamic> _newsList = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetch();
+    _fetchCategoryNews();
   }
 
-  void _fetch() async {
+  @override
+  void didUpdateWidget(covariant CategoryNewsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.categoryId != widget.categoryId) {
+      _fetchCategoryNews();
+    }
+  }
+
+  Future<void> _fetchCategoryNews() async {
+    setState(() => _isLoading = true);
     final provider = Provider.of<PublicNewsProvider>(context, listen: false);
-    // Simulating "By Category" fetch using the provider's helper
-    final result = await provider.fetchNewsByCategory(widget.categoryId);
+    final results = await provider.fetchNewsByCategory(widget.categoryId);
+    
     if (mounted) {
       setState(() {
-        _news = result;
-        _loading = false;
+        _newsList = results;
+        _isLoading = false;
       });
     }
   }
@@ -36,22 +46,53 @@ class _CategoryNewsScreenState extends State<CategoryNewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.categoryId)),
-      body: _loading 
-        ? const Center(child: CircularProgressIndicator())
-        : _news.isEmpty 
-           ? const Center(child: Text('No news in this category'))
-           : GridView.builder(
-               padding: const EdgeInsets.all(16),
-               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 400,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.8,
-               ),
-               itemCount: _news.length,
-               itemBuilder: (ctx, i) => NewsCard(news: _news[i]),
-             ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: PortalHeader()),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SectionHeader(title: widget.categoryId, accentColor: Colors.blue),
+              ),
+            ),
+            
+            if (_isLoading)
+               const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+            
+            if (!_isLoading && _newsList.isEmpty)
+               const SliverFillRemaining(child: Center(child: Text("No news found in this category"))),
+
+            if (!_isLoading && _newsList.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 400,
+                      mainAxisSpacing: 24,
+                      crossAxisSpacing: 24,
+                      childAspectRatio: 0.8,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                         // Fallback to simple tile if needed, but styling as card
+                         return Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             Expanded(child: HeroNewsCard(news: _newsList[index])),
+                           ],
+                         );
+                      },
+                      childCount: _newsList.length,
+                    ),
+                ),
+              ),
+              
+             const SliverToBoxAdapter(child: SizedBox(height: 48)),
+          ],
+        ),
+      ),
     );
   }
 }

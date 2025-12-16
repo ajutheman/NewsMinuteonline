@@ -15,7 +15,7 @@ class PublicAdProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await http.get(Uri.parse('${Constants.baseUrl}/ads'));
+      final response = await http.get(Uri.parse('${Constants.baseUrl}/ads/public'));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         // Filter only Active ads

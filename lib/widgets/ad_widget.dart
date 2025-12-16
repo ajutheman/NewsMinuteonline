@@ -8,53 +8,39 @@ class AdWidget extends StatelessWidget {
   const AdWidget({super.key, required this.position});
 
   @override
-
-class _AdWidgetState extends State<AdWidget> {
-  List<dynamic> _ads = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchAds();
-  }
-
-  Future<void> _fetchAds() async {
-    try {
-      final response = await http.get(Uri.parse('${Constants.baseUrl}/ads/public?position=${widget.position}'));
-      if (response.statusCode == 200) {
-        setState(() {
-          _ads = json.decode(response.body);
-        });
-      }
-    } catch (e) {
-      print(e);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_ads.isEmpty) return const SizedBox.shrink();
+    return Consumer<PublicAdProvider>(
+      builder: (context, provider, _) {
+        final ads = provider.getAdsByPosition(position);
+        if (ads.isEmpty) return const SizedBox.shrink();
 
-    // Rotate or Show First Ad
-    final ad = _ads.first;
-    
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      padding: const EdgeInsets.all(8),
-      color: Colors.grey.shade100,
-      child: Column(
-        children: [
-          Text('Advertisement', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
-          const SizedBox(height: 4),
-          if (ad['type'] == 'Image')
-            Image.network(ad['content'], height: 100, fit: BoxFit.cover, errorBuilder: (_,__,___) => const SizedBox())
-          else if (ad['type'] == 'Text')
-             Text(ad['content'], style: const TextStyle(fontWeight: FontWeight.bold))
-          else
-            const Text('Ad Content Placeholder'),
-        ],
-      ),
+        // Show first active ad for this position
+        final ad = ads.first; 
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(vertical: 16),
+          child: InkWell(
+            onTap: () {
+               if (ad['linkUrl'] != null && ad['linkUrl'].isNotEmpty) {
+                 launchUrl(Uri.parse(ad['linkUrl']));
+               }
+            },
+            child: ad['type'] == 'Image' && ad['content'] != null
+              ? Image.network(
+                  ad['content'],
+                  fit: BoxFit.contain,
+                  errorBuilder: (ctx, _, __) => const SizedBox.shrink(),
+                )
+              : Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Colors.grey.shade200,
+                  alignment: Alignment.center,
+                  child: Text(ad['content'] ?? 'Ad', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+          ),
+        );
+      },
     );
   }
 }
